@@ -1,0 +1,13 @@
+/target
+report.json
+report.txt
+*.report.json
+node_modules/
+bin/*/
+*.tgz
+
+
+.claude
+.agent
+.codex
+.workbuddy

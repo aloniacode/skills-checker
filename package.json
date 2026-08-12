@@ -1,0 +1,41 @@
+{
+  "name": "skills-checker",
+  "version": "0.1.0",
+  "description": "CLI security scanner for local Agent/SKILL config files: remote upload, hardcoded secrets, suspicious URLs, dangerous commands",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "skills-checker": "bin/skills-checker.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/"
+  ],
+  "scripts": {
+    "build:bin": "cargo build --release && node scripts/copy-bin.js",
+    "prepack": "node scripts/copy-bin.js --if-missing",
+    "postinstall": "node scripts/install.js",
+    "test:bin": "node bin/skills-checker.js --version"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": [
+    "security",
+    "scanner",
+    "agent",
+    "skill",
+    "claude",
+    "coze",
+    "cursor",
+    "cli",
+    "rust"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aloniacode/skills-checker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aloniacode/skills-checker/issues"
+  }
+}
