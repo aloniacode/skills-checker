@@ -18,97 +18,155 @@ fn type_counts(result: &ScanResult) -> Vec<(RiskType, usize)> {
     counts
 }
 
-fn sev_label(sev: Severity) -> String {
+/// 等级徽章：反色背景 + 固定宽度，视觉上一眼分级
+fn sev_badge(sev: Severity) -> String {
+    let label = sev.to_string().to_uppercase();
+    let padded = format!(" {label:<8} ");
     match sev {
-        Severity::Critical => "CRITICAL".red().bold().to_string(),
-        Severity::High => "HIGH".red().to_string(),
-        Severity::Medium => "MEDIUM".yellow().to_string(),
-        Severity::Low => "LOW".cyan().to_string(),
+        Severity::Critical => padded.on_red().white().bold().to_string(),
+        Severity::High => padded.on_bright_red().black().bold().to_string(),
+        Severity::Medium => padded.on_yellow().black().to_string(),
+        Severity::Low => padded.on_cyan().black().to_string(),
+    }
+}
+
+/// 风险类型图标
+fn type_icon(t: RiskType) -> &'static str {
+    match t {
+        RiskType::RemoteUpload => "📤",
+        RiskType::HardcodedSecret => "🔑",
+        RiskType::SuspiciousUrl => "🌐",
+        RiskType::DangerousExec => "⚡",
     }
 }
 
 /// 终端彩色输出
 pub fn render_terminal(result: &ScanResult, verbose: bool) {
     let clean = result.is_clean();
+    let rule = "─".repeat(64);
+    let rule_d = rule.dimmed();
 
-    if clean {
-        println!("{} 未发现安全风险。", "✅".green().bold());
-    } else {
-        println!(
-            "{} 发现 {} 处安全风险：",
-            "⚠️".yellow().bold(),
-            result.findings.len()
-        );
-        println!();
-
-        let mut current_file: Option<&str> = None;
-        for f in &result.findings {
-            if current_file != Some(f.file.as_str()) {
-                current_file = Some(f.file.as_str());
-                println!("{}", format!("📄 {}", f.file).bold().underline());
-            }
-            println!(
-                "  {} [{}] {} · {}",
-                format!("L{}", f.line).dimmed(),
-                sev_label(f.severity),
-                f.risk_type.to_string().bold(),
-                format!("({})", f.rule_id).dimmed(),
-            );
-            println!("      {} {}", "→".dimmed(), f.description);
-            if verbose {
-                println!("      {} {}", "代码:".dimmed(), f.snippet);
-            }
-            println!("      {} {}", "修复:".green().dimmed(), f.fix);
+    // 按文件分组（保持等级优先的原始顺序，组内不拆散）
+    let mut groups: Vec<(&str, Vec<&crate::models::Finding>)> = Vec::new();
+    for f in &result.findings {
+        if let Some(entry) = groups.iter_mut().find(|(name, _)| *name == f.file) {
+            entry.1.push(f);
+        } else {
+            groups.push((f.file.as_str(), vec![f]));
         }
     }
 
+    // ---- 头部 ----
+    if clean {
+        println!();
+        println!("  {}  {}  {}", "✅".green().bold(), "未发现安全风险".green().bold(), "全部配置干净".dimmed());
+    } else {
+        println!();
+        println!(
+            "  {} {} {} {}",
+            "⚠️".yellow().bold(),
+            format!("{}", result.findings.len()).red().bold().underline(),
+            "处安全风险".bold(),
+            format!("（涉及 {} 个文件）", groups.len()).dimmed(),
+        );
+        println!("{}", rule_d);
+    }
+
+    // ---- 风险明细（按文件分组，组内保持等级排序）----
+    if !clean {
+        for (idx, (file, findings)) in groups.iter().enumerate() {
+            if idx > 0 {
+                println!();
+            }
+            println!(
+                "  {} {}  {}",
+                "📄".bold(),
+                file.bold().underline(),
+                format!("{} 处风险", findings.len()).dimmed(),
+            );
+            for f in findings.iter() {
+                println!(
+                    "    {} {} {} {} {}",
+                    format!("L{:<5}", f.line).dimmed(),
+                    sev_badge(f.severity),
+                    type_icon(f.risk_type),
+                    f.risk_type,
+                    format!("({})", f.rule_id).dimmed(),
+                );
+                println!("        {} {}", "→".dimmed(), f.description);
+                if verbose {
+                    println!("        {} {}", "代码:".cyan().dimmed(), f.snippet.dimmed());
+                }
+                println!("        {} {}", "修复:".green().bold(), f.fix);
+            }
+        }
+    }
+
+    // ---- 汇总面板 ----
     println!();
+    println!("{}", rule_d);
+    println!("  {} {}", "📊 扫描摘要".bold(), format!("(scanned_at {})", result.scanned_at).dimmed());
     println!(
-        "{} 扫描根目录 {} 个 | 文件 {} 个 | 读取 {:.1} MB | 缓存命中 {} | 耗时 {:.2}s",
-        "🔍".bold(),
+        "    📂 根目录 {} 个 · 📄 文件 {} 个 · 💾 {:.1} MB · ⚡ {:.2}s · 🔁 缓存命中 {}",
         result.roots.len(),
         result.scanned_files,
         result.scanned_bytes as f64 / 1024.0 / 1024.0,
-        result.cache_hits,
         result.duration_ms as f64 / 1000.0,
+        result.cache_hits,
     );
 
-    // 分等级统计
-    let crit = result
-        .findings
-        .iter()
-        .filter(|f| f.severity == Severity::Critical)
-        .count();
-    let high = result
-        .findings
-        .iter()
-        .filter(|f| f.severity == Severity::High)
-        .count();
-    let med = result
-        .findings
-        .iter()
-        .filter(|f| f.severity == Severity::Medium)
-        .count();
-    let low = result
-        .findings
-        .iter()
-        .filter(|f| f.severity == Severity::Low)
-        .count();
-    println!(
-        "{}  等级分布: {} critical · {} high · {} medium · {} low",
-        "📊".bold(),
-        format!("{crit}").red().bold(),
-        format!("{high}").red(),
-        format!("{med}").yellow(),
-        format!("{low}").cyan(),
-    );
-
-    // 风险类型分布
+    // 等级分布 + 类型分布（无风险时不展示空统计）
     if !clean {
+        let crit = result
+            .findings
+            .iter()
+            .filter(|f| f.severity == Severity::Critical)
+            .count();
+        let high = result
+            .findings
+            .iter()
+            .filter(|f| f.severity == Severity::High)
+            .count();
+        let med = result
+            .findings
+            .iter()
+            .filter(|f| f.severity == Severity::Medium)
+            .count();
+        let low = result
+            .findings
+            .iter()
+            .filter(|f| f.severity == Severity::Low)
+            .count();
+        let total = result.findings.len().max(1);
+        let bar = |n: usize| {
+            if n == 0 {
+                "▏".dimmed().to_string()
+            } else {
+                "█".repeat((n * 20 / total).max(1))
+            }
+        };
+        println!(
+            "    📊 等级分布  {} {}  {} {}  {} {}  {} {}",
+            bar(crit).red().bold(),
+            format!("{crit} critical").red().bold(),
+            bar(high).bright_red(),
+            format!("{high} high").bright_red(),
+            bar(med).yellow(),
+            format!("{med} medium").yellow(),
+            bar(low).cyan(),
+            format!("{low} low").cyan(),
+        );
+
+        // 类型分布
         let counts = type_counts(result);
-        let parts: Vec<String> = counts.iter().map(|(t, n)| format!("{}×{}", t, n)).collect();
-        println!("{}  类型分布: {}", "🧩".bold(), parts.join(" · "));
+        let parts: Vec<String> = counts
+            .iter()
+            .map(|(t, n)| format!("{} {} {}", type_icon(*t), t, format!("×{n}").dimmed()))
+            .collect();
+        println!("    🧩 类型分布  {}", parts.join("   "));
     }
+    println!("{}", rule_d);
+    println!();
 }
 
 /// 纯文本输出（无颜色，适合落盘）
