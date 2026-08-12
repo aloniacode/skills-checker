@@ -17,7 +17,8 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
+          # aarch64 必须在 arm64 runner 上原生编译，避免 x86_64 交叉链接器缺失
+          - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
           - os: macos-13
             target: x86_64-apple-darwin
