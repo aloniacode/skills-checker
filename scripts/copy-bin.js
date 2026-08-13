@@ -80,13 +80,16 @@ function main() {
   const destDir = path.join(root, 'bin', `${platform}-${arch}`);
   const dest = path.join(destDir, exeName);
 
-  if (!fs.existsSync(src)) {
-    console.error(`[copy-bin] Source binary not found: ${src}\n  Run "cargo build --release" first.`);
-    process.exit(2);
-  }
+  // --if-missing：目标已存在则直接跳过（CI 发布 job 中 bin/ 已由
+  // merge-artifacts 填充，此时没有本地 target/release，不应报错）
   if (opts.ifMissing && fs.existsSync(dest)) {
     console.log(`[copy-bin] ${platform}-${arch} already exists, skipped.`);
     return;
+  }
+
+  if (!fs.existsSync(src)) {
+    console.error(`[copy-bin] Source binary not found: ${src}\n  Run "cargo build --release" first.`);
+    process.exit(2);
   }
 
   fs.mkdirSync(destDir, { recursive: true });
