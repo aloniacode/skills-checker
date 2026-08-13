@@ -1,6 +1,6 @@
 {
   "name": "skills-checker",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "CLI security scanner for local Agent/SKILL config files: remote upload, hardcoded secrets, suspicious URLs, dangerous commands",
   "license": "MIT",
   "type": "module",
