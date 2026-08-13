@@ -19,6 +19,7 @@ cargo build --release
 ./target/release/skills-checker -d ~/.claude    # scan a specific dir (repeatable -d)
 ./target/release/skills-checker -d ./skills --json   # JSON to stdout
 ./target/release/skills-checker -d ./skills -o report.json   # export (format inferred from extension)
+./target/release/skills-checker -d ./skills -o report.html   # readable HTML report
 ./target/release/skills-checker -d ./skills -o report.txt --format text
 ./target/release/skills-checker -d ./skills --fail-on high -q   # CI integration
 ```
@@ -29,7 +30,7 @@ cargo build --release
 -d, --path <DIR>    Scan a specific directory (repeatable); default scans common global agent dirs
     --json          Output JSON to stdout
 -o, --output <FILE> Export report to a file
-    --format <FMT>  Export format json|text (inferred from extension by default)
+    --format <FMT>  Export format auto|json|html|text (default: auto, inferred from file extension)
     --no-cache      Disable incremental cache
 -q, --quiet         Quiet mode (single summary line)
 -v, --verbose       Show matched source lines
@@ -132,8 +133,13 @@ Option B — CI (recommended, all 5 platforms):
 
 ```bash
 npm install -g skills-checker
-skills-checker -d ./skills --json
+skills-checker -d ./skills --json        # machine-readable JSON
+skills-checker -d ./skills -o report.html # self-contained readable HTML report
 ```
+
+The HTML report is a single self-contained file (inline CSS/JS, no external
+dependencies) with severity badges, per-file grouping, clickable severity
+filters and dark-mode support — ideal for sharing with non-CLI users.
 
 If no prebuilt binary matches the platform, `postinstall` prints instructions:
 `npm run build:bin` (build locally) or set `SKILLS_CHECKER_BIN_URL` to download

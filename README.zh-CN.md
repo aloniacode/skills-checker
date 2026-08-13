@@ -19,6 +19,7 @@ cargo build --release
 ./target/release/skills-checker -d ~/.claude    # 指定目录（可多次 -d）
 ./target/release/skills-checker -d ./skills --json   # JSON 输出到 stdout
 ./target/release/skills-checker -d ./skills -o report.json   # 导出报告（扩展名自动推断格式）
+./target/release/skills-checker -d ./skills -o report.html   # 导出可读的 HTML 报告
 ./target/release/skills-checker -d ./skills -o report.txt --format text
 ./target/release/skills-checker -d ./skills --fail-on high -q   # CI 集成
 ```
@@ -29,7 +30,7 @@ cargo build --release
 -d, --path <DIR>    指定扫描目录（可多次指定）；缺省扫描常见全局 Agent 配置目录
     --json          JSON 格式输出到 stdout
 -o, --output <FILE> 导出报告到文件
-    --format <FMT>  导出格式 json|text（默认按扩展名推断）
+    --format <FMT>  导出格式 auto|json|html|text（默认 auto，按扩展名推断）
     --no-cache      禁用增量缓存
 -q, --quiet         安静模式（仅一行摘要）
 -v, --verbose       显示命中的代码行
@@ -127,8 +128,12 @@ npm publish --access public
 
 ```bash
 npm install -g skills-checker
-skills-checker -d ./skills --json
+skills-checker -d ./skills --json         # 机器可读 JSON
+skills-checker -d ./skills -o report.html # 自包含可读 HTML 报告
 ```
+
+HTML 报告为单个自包含文件（内联 CSS/JS，无外部依赖），包含等级徽章、
+按文件分组、可点击的等级筛选与深色模式适配——适合分享给非 CLI 用户阅读。
 
 若平台无匹配的预编译二进制，`postinstall` 会输出指引：
 `npm run build:bin`（本地构建）或设置 `SKILLS_CHECKER_BIN_URL` 从 GitHub

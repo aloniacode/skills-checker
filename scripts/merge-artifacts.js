@@ -4,8 +4,9 @@
  * into a single bin/<platform>-<arch>/ layout for npm publish.
  *
  * Expected input layout (download-artifact@v4 with path: bin):
- *   bin/<artifact-name>/<platform>-<arch>/skills-checker(.exe)
- * Produces:
+ *   bin/bin-<target>/<platform>-<arch>/skills-checker(.exe)
+ *   bin/bin-<target>/skills-checker.js           (shim copy, discarded)
+ * Produces (artifact dirs removed):
  *   bin/<platform>-<arch>/skills-checker(.exe)
  */
 import fs from 'node:fs';
@@ -25,6 +26,8 @@ let merged = 0;
 for (const entry of fs.readdirSync(binDir)) {
   const artifactDir = path.join(binDir, entry);
   if (!fs.statSync(artifactDir).isDirectory()) continue;
+  // 只处理 CI 下载的 artifact 目录（bin-<target>），跳过本地已有的平台目录
+  if (!entry.startsWith('bin-')) continue;
   for (const plat of fs.readdirSync(artifactDir)) {
     const from = path.join(artifactDir, plat);
     if (!fs.statSync(from).isDirectory()) continue;
@@ -32,6 +35,13 @@ for (const entry of fs.readdirSync(binDir)) {
     fs.cpSync(from, to, { recursive: true });
     merged++;
     console.log(`[merge-artifacts] ${from} -> ${to}`);
+  }
+  // 合并后删除整个 artifact 目录（含 shim 副本与嵌套残留）；清理失败仅告警不中断
+  try {
+    fs.rmSync(artifactDir, { recursive: true, force: true });
+    console.log(`[merge-artifacts] removed ${artifactDir}`);
+  } catch (err) {
+    console.warn(`[merge-artifacts] warn: failed to remove ${artifactDir}: ${err.message}`);
   }
 }
 
