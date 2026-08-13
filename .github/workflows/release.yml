@@ -73,7 +73,8 @@ jobs:
       - name: Sync package version from git tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          npm version "$VERSION" --no-git-tag-version
+          # npm pkg set 幂等：版本相同也不报 "Version not changed"
+          npm pkg set version="$VERSION"
           echo "Publishing skills-checker@$VERSION"
 
       - name: Verify package contents
