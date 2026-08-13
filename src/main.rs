@@ -38,8 +38,8 @@ struct Args {
     #[arg(short = 'o', long = "output", value_name = "FILE")]
     output: Option<String>,
 
-    /// 导出格式: json | text（默认按输出文件扩展名推断）
-    #[arg(long, value_name = "FORMAT", default_value = "json")]
+    /// 导出格式: auto | json | html | text（默认 auto，按输出文件扩展名推断）
+    #[arg(long, value_name = "FORMAT", default_value = "auto")]
     format: String,
 
     /// 禁用增量缓存
@@ -126,6 +126,7 @@ fn main() -> ExitCode {
                 .and_then(|e| e.to_str())
             {
                 Some("json") => "json",
+                Some("html") | Some("htm") => "html",
                 Some("txt") | Some("text") | Some("md") => "text",
                 _ => "json",
             }
